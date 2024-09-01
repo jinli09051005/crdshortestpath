@@ -1,0 +1,59 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - dijkstra.jinli.io
+  resources:
+  - displays
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - dijkstra.jinli.io
+  resources:
+  - displays/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - dijkstra.jinli.io
+  resources:
+  - displays/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - dijkstra.jinli.io
+  resources:
+  - knownnodeses
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - dijkstra.jinli.io
+  resources:
+  - knownnodeses/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - dijkstra.jinli.io
+  resources:
+  - knownnodeses/status
+  verbs:
+  - get
+  - patch
+  - update

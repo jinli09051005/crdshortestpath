@@ -1,0 +1,14 @@
+apiVersion: dijkstra.jinli.io/v2
+kind: KnownNodes
+metadata:
+  name: kn-default
+spec:
+  nodeIdentity: new
+  costUnit: km
+  nodes:
+  - id: 1
+    name: 节点1
+  - id: 2
+    name: 节点2
+  - id: 3
+    name: 节点3

@@ -1,0 +1,12 @@
+apiVersion: dijkstra.jinli.io/v2
+kind: Display
+metadata:
+  labels:
+    app.kubernetes.io/name: display
+    app.kubernetes.io/instance: display-sample
+    app.kubernetes.io/part-of: crdshortestpath
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: crdshortestpath
+  name: display-sample
+spec:
+  # TODO(user): Add fields here

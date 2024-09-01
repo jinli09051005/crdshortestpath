@@ -1,0 +1,6 @@
+apiVersion: dijkstra.jinli.io/v1
+kind: KnownNodes
+metadata:
+  name: kn-1
+spec:
+  nodeIdentity: new

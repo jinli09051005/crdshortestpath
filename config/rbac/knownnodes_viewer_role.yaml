@@ -1,0 +1,27 @@
+# permissions for end users to view knownnodes.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: knownnodes-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: crdshortestpath
+    app.kubernetes.io/part-of: crdshortestpath
+    app.kubernetes.io/managed-by: kustomize
+  name: knownnodes-viewer-role
+rules:
+- apiGroups:
+  - dijkstra.jinli.io
+  resources:
+  - knownnodeses
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - dijkstra.jinli.io
+  resources:
+  - knownnodeses/status
+  verbs:
+  - get

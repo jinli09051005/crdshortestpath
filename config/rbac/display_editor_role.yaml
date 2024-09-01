@@ -1,0 +1,31 @@
+# permissions for end users to edit displays.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: display-editor-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: crdshortestpath
+    app.kubernetes.io/part-of: crdshortestpath
+    app.kubernetes.io/managed-by: kustomize
+  name: display-editor-role
+rules:
+- apiGroups:
+  - dijkstra.jinli.io
+  resources:
+  - displays
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - dijkstra.jinli.io
+  resources:
+  - displays/status
+  verbs:
+  - get

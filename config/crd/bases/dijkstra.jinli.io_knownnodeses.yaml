@@ -1,0 +1,213 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.10.0
+  creationTimestamp: null
+  name: knownnodeses.dijkstra.jinli.io
+spec:
+  group: dijkstra.jinli.io
+  names:
+    kind: KnownNodes
+    listKind: KnownNodesList
+    plural: knownnodeses
+    shortNames:
+    - kn
+    singular: knownnodes
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - description: kn name
+      jsonPath: .metadata.name
+      name: Name
+      type: string
+    - description: kn id
+      jsonPath: .spec.nodeIdentity
+      name: NodeIdentity
+      type: string
+    - description: to node cost unit
+      jsonPath: .spec.costUnit
+      name: CostUnit
+      type: string
+    - description: kn has the number of nodes
+      jsonPath: .annotations.nodes
+      name: Nodes
+      type: string
+    - description: how long has it been created
+      jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    - description: how long has it been updated
+      jsonPath: .status.lastUpdate
+      name: Update
+      type: date
+    name: v1
+    schema:
+      openAPIV3Schema:
+        description: KnownNodes is the Schema for the knownnodes API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: KnownNodesSpec defines the desired state of KnownNodes
+            properties:
+              costUnit:
+                description: To node cost unit
+                type: string
+              nodeIdentity:
+                description: A type of node identity
+                type: string
+              nodes:
+                description: Known nodes information
+                items:
+                  properties:
+                    edges:
+                      description: Node edges
+                      items:
+                        properties:
+                          cost:
+                            description: To node cost
+                            format: int32
+                            type: integer
+                          id:
+                            description: To node id
+                            format: int32
+                            type: integer
+                        type: object
+                      type: array
+                    id:
+                      description: Node id
+                      format: int32
+                      type: integer
+                    name:
+                      description: Node name
+                      type: string
+                  type: object
+                type: array
+            type: object
+          status:
+            description: KnownNodesStatus defines the observed state of KnownNodes
+            properties:
+              lastUpdate:
+                description: Last Update Time
+                format: date-time
+                type: string
+              record:
+                additionalProperties:
+                  type: string
+                description: Record
+                type: object
+            type: object
+        type: object
+    served: true
+    storage: false
+    subresources:
+      status: {}
+  - additionalPrinterColumns:
+    - description: kn name
+      jsonPath: .metadata.name
+      name: Name
+      type: string
+    - description: kn id
+      jsonPath: .spec.nodeIdentity
+      name: NodeIdentity
+      type: string
+    - description: to node cost unit
+      jsonPath: .spec.costUnit
+      name: CostUnit
+      type: string
+    - description: kn has the number of nodes
+      jsonPath: .annotations.nodes
+      name: Nodes
+      type: string
+    - description: how long has it been created
+      jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    - description: how long has it been updated
+      jsonPath: .status.lastUpdate
+      name: Update
+      type: date
+    name: v2
+    schema:
+      openAPIV3Schema:
+        description: KnownNodes is the Schema for the knownnodes API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: KnownNodesSpec defines the desired state of KnownNodes
+            properties:
+              costUnit:
+                description: To node cost unit
+                type: string
+              nodeIdentity:
+                description: A type of node identity
+                type: string
+              nodes:
+                description: Known nodes information
+                items:
+                  properties:
+                    edges:
+                      description: Node edges
+                      items:
+                        properties:
+                          cost:
+                            description: To node cost
+                            format: int32
+                            type: integer
+                          id:
+                            description: To node id
+                            format: int32
+                            type: integer
+                        type: object
+                      type: array
+                    id:
+                      description: Node id
+                      format: int32
+                      type: integer
+                    name:
+                      description: Node name
+                      type: string
+                  type: object
+                type: array
+            type: object
+          status:
+            description: KnownNodesStatus defines the observed state of KnownNodes
+            properties:
+              lastUpdate:
+                description: Last Update Time
+                format: date-time
+                type: string
+              record:
+                additionalProperties:
+                  type: string
+                description: Record
+                type: object
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

@@ -1,0 +1,174 @@
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  creationTimestamp: null
+  name: mutating-webhook-configuration
+webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-dijkstra-jinli-io-v1-display
+  failurePolicy: Fail
+  name: mdisplay.kb.io
+  rules:
+  - apiGroups:
+    - dijkstra.jinli.io
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - displays
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-dijkstra-jinli-io-v1-knownnodes
+  failurePolicy: Fail
+  name: mknownnodes.kb.io
+  rules:
+  - apiGroups:
+    - dijkstra.jinli.io
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - knownnodeses
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-dijkstra-jinli-io-v2-display
+  failurePolicy: Fail
+  name: m2display.kb.io
+  rules:
+  - apiGroups:
+    - dijkstra.jinli.io
+    apiVersions:
+    - v2
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - displays
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-dijkstra-jinli-io-v2-knownnodes
+  failurePolicy: Fail
+  name: m2knownnodes.kb.io
+  rules:
+  - apiGroups:
+    - dijkstra.jinli.io
+    apiVersions:
+    - v2
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - knownnodeses
+  sideEffects: None
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  creationTimestamp: null
+  name: validating-webhook-configuration
+webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-dijkstra-jinli-io-v1-display
+  failurePolicy: Fail
+  name: vdisplay.kb.io
+  rules:
+  - apiGroups:
+    - dijkstra.jinli.io
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - displays
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-dijkstra-jinli-io-v1-knownnodes
+  failurePolicy: Fail
+  name: vknownnodes.kb.io
+  rules:
+  - apiGroups:
+    - dijkstra.jinli.io
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - knownnodeses
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-dijkstra-jinli-io-v2-display
+  failurePolicy: Fail
+  name: v2display.kb.io
+  rules:
+  - apiGroups:
+    - dijkstra.jinli.io
+    apiVersions:
+    - v2
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - displays
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-dijkstra-jinli-io-v2-knownnodes
+  failurePolicy: Fail
+  name: v2knownnodes.kb.io
+  rules:
+  - apiGroups:
+    - dijkstra.jinli.io
+    apiVersions:
+    - v2
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - knownnodeses
+  sideEffects: None

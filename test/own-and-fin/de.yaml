@@ -1,0 +1,11 @@
+apiVersion: dijkstra.jinli.io/v1
+kind: Display
+metadata:
+  name: de
+  namespace: default
+spec:
+  nodeIdentity: new
+  #algorithm: dijkstra
+  startNode:
+    id: 3
+    name: 节点3

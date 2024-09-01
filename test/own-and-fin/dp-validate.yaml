@@ -1,0 +1,11 @@
+apiVersion: dijkstra.jinli.io/v2
+kind: Display
+metadata:
+  name: dp-validate
+  namespace: default
+spec:
+  nodeIdentity: new
+  algorithm: SPFA
+  startNode:
+    id: 3
+    name: 节点3

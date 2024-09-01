@@ -1,0 +1,7 @@
+## Append samples you want in your CSV to this file as resources ##
+resources:
+- dijkstra_v1_knownnodes.yaml
+- dijkstra_v1_display.yaml
+- dijkstra_v2_knownnodes.yaml
+- dijkstra_v2_display.yaml
+#+kubebuilder:scaffold:manifestskustomizesamples

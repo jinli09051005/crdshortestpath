@@ -1,0 +1,8 @@
+apiVersion: dijkstra.jinli.io/v1
+kind: Display
+metadata:
+  name: dp-default
+spec:
+  startNode:
+   id: 1
+   name: node1

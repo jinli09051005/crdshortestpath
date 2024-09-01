@@ -1,0 +1,6 @@
+apiVersion: dijkstra.jinli.io/v1
+kind: KnownNodes
+metadata:
+  name: kn-3
+spec:
+  nodeIdentity: 123

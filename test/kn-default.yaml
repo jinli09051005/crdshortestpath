@@ -1,0 +1,4 @@
+apiVersion: dijkstra.jinli.io/v1
+kind: KnownNodes
+metadata:
+  name: kn-default

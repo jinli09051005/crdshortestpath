@@ -1,0 +1,12 @@
+apiVersion: dijkstra.jinli.io/v1
+kind: KnownNodes
+metadata:
+  labels:
+    app.kubernetes.io/name: knownnodes
+    app.kubernetes.io/instance: knownnodes-sample
+    app.kubernetes.io/part-of: crdshortestpath
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: crdshortestpath
+  name: knownnodes-sample
+spec:
+  # TODO(user): Add fields here

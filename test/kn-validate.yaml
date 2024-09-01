@@ -1,0 +1,7 @@
+apiVersion: dijkstra.jinli.io/v1
+kind: KnownNodes
+metadata:
+  name: kn-validate
+  namespace: default
+spec:
+  nodeIdentity: jinli-default-nodeid
