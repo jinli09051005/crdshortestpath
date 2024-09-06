@@ -31,9 +31,6 @@ type DisplaySpec struct {
 	// Start node information
 	// +kubebuilder:validation:Required
 	StartNode StartNode `json:"startNode,omitempty"`
-	// Target nodes information
-	// +optional
-	TargetNodes []TargetNode `json:"targetNodes,omitempty"`
 	// Algorithms used to calculate the shortest path, including dijkstra and floyd algorithms
 	// +kubebuilder:validation:Enum=dijkstra;floyd
 	Algorithm string `json:"algorithm,omitempty"`
@@ -66,6 +63,9 @@ type TargetNode struct {
 
 // DisplayStatus defines the observed state of Display
 type DisplayStatus struct {
+	// Target nodes information
+	// +optional
+	TargetNodes []TargetNode `json:"targetNodes,omitempty"`
 	// Last Update Time
 	// +optional
 	LastUpdate metav1.Time `json:"lastUpdate,omitempty"`

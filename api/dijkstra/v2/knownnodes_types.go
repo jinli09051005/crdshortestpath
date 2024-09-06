@@ -76,7 +76,7 @@ type KnownNodesStatus struct {
 //+kubebuilder:printcolumn:name="Name",type="string",JSONPath=".metadata.name",description="kn name"
 //+kubebuilder:printcolumn:name="NodeIdentity",type="string",JSONPath=".spec.nodeIdentity",description="kn id"
 //+kubebuilder:printcolumn:name="CostUnit",type="string",JSONPath=".spec.costUnit",description="to node cost unit"
-//+kubebuilder:printcolumn:name="Nodes",type="string",JSONPath=".annotations.nodes",description="kn has the number of nodes"
+//+kubebuilder:printcolumn:name="Nodes",type="string",JSONPath=".metadata.annotations.nodes",description="kn has the number of nodes"
 //+kubebuilder:printcolumn:name="Age",type=date,JSONPath=.metadata.creationTimestamp,description="how long has it been created"
 //+kubebuilder:printcolumn:name="Update",type=date,JSONPath=".status.lastUpdate",description="how long has it been updated"
 

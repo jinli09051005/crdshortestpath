@@ -1,0 +1,22 @@
+apiVersion: dijkstra.jinli.io/v1
+kind: Display
+metadata:
+  name: dp-1
+  namespace: default
+spec:
+  nodeIdentity: new
+  startNode:
+   id: 1
+   name: 节点1
+  targetNodes:
+  - id: 1
+    name: 节点1
+    path: '[]'
+  - distance: 100
+    id: 2
+    name: 节点2
+    path: '[节点1]'
+  - distance: 150
+    id: 3
+    name: 节点3
+    path: '[节点1 节点2]'

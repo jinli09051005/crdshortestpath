@@ -56,11 +56,6 @@ func (dp *Display) ConvertTo(dst conversion.Hub) error {
 	v2dp.Spec.NodeIdentity = dp.Spec.NodeIdentity
 	v2dp.Spec.StartNode = dijkstrav2.StartNode(dp.Spec.StartNode)
 
-	for i := range dp.Spec.TargetNodes {
-		targetNode := dijkstrav2.TargetNode(dp.Spec.TargetNodes[i])
-		v2dp.Spec.TargetNodes = append(v2dp.Spec.TargetNodes, targetNode)
-	}
-
 	if algorithm, ok := dp.Status.Record["algorithm"]; ok {
 		v2dp.Spec.Algorithm = algorithm
 	} else {
@@ -77,6 +72,11 @@ func (dp *Display) ConvertTo(dst conversion.Hub) error {
 		}
 	}
 
+	for i := range dp.Status.TargetNodes {
+		targetNode := dijkstrav2.TargetNode(dp.Status.TargetNodes[i])
+		v2dp.Status.TargetNodes = append(v2dp.Status.TargetNodes, targetNode)
+	}
+
 	v2dp.Status.LastUpdate = dp.Status.LastUpdate
 
 	return nil
@@ -89,9 +89,9 @@ func (dp *Display) ConvertFrom(src conversion.Hub) error {
 	dp.Spec.NodeIdentity = v2dp.Spec.NodeIdentity
 	dp.Spec.StartNode = StartNode(v2dp.Spec.StartNode)
 
-	for i := range dp.Spec.TargetNodes {
-		targetNode := TargetNode(v2dp.Spec.TargetNodes[i])
-		dp.Spec.TargetNodes = append(dp.Spec.TargetNodes, targetNode)
+	for i := range v2dp.Status.TargetNodes {
+		targetNode := TargetNode(v2dp.Status.TargetNodes[i])
+		dp.Status.TargetNodes = append(dp.Status.TargetNodes, targetNode)
 	}
 
 	dp.Status.LastUpdate = v2dp.Status.LastUpdate
