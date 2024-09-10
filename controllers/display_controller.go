@@ -58,7 +58,9 @@ func (r *DisplayReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					return false
 				},
 				UpdateFunc: func(up event.UpdateEvent) bool {
-					return true
+					oldDp := up.ObjectOld.(*dijkstrav2.Display)
+					newDp := up.ObjectNew.(*dijkstrav2.Display)
+					return newDp.Spec.StartNode.ID != oldDp.Spec.StartNode.ID
 				},
 				GenericFunc: func(event.GenericEvent) bool {
 					return true
@@ -144,7 +146,6 @@ func (r *DisplayReconciler) update(ctx context.Context, name types.NamespacedNam
 				return err
 			}
 		}
-		return nil
 	}
 
 	// 需要更新资源列表

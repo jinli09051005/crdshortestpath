@@ -34,6 +34,8 @@ import (
 	dijkstrav1 "jinli.io/crdshortestpath/api/dijkstra/v1"
 	dijkstrav2 "jinli.io/crdshortestpath/api/dijkstra/v2"
 	"jinli.io/crdshortestpath/controllers"
+
+	// "jinli.io/crdshortestpath/controllers2"
 	customwebhookv2 "jinli.io/crdshortestpath/pkg/webhook"
 	//+kubebuilder:scaffold:imports
 )
@@ -109,6 +111,7 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Display")
 		os.Exit(1)
 	}
+	// go controllers2.RunController(scheme, restConfig)
 
 	if err = (&dijkstrav1.KnownNodes{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "KnownNodes")
