@@ -150,6 +150,7 @@ func (kc *KnController) syncHandler(key string) error {
 		if errors.IsConflict(err) {
 			// 处理冲突，例如通过重新获取资源并重试更新
 			klog.Info("Update conflict, retrying", " namespace:"+ns, " name:"+name)
+			kc.enqueue(kn)
 			return nil
 		}
 		return err

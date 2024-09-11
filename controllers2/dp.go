@@ -127,6 +127,7 @@ func (dc *DpController) syncHandler(key string) error {
 	dp, err := dc.dpLister.Displays(ns).Get(name)
 	if errors.IsNotFound(err) {
 		utilruntime.HandleError(fmt.Errorf("dp %v has been deleted", key))
+		dc.enqueue(dp)
 		return nil
 	}
 	if err != nil {
