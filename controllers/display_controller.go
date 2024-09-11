@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
@@ -27,7 +28,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
@@ -46,27 +46,31 @@ type DisplayReconciler struct {
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *DisplayReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	predicates := predicate.Funcs{
+		CreateFunc: func(c event.CreateEvent) bool {
+			dp := c.Object.(*dijkstrav2.Display)
+			fmt.Printf("dp added: %s\n", dp.Name)
+			return true
+		},
+		UpdateFunc: func(up event.UpdateEvent) bool {
+			oldDp := up.ObjectOld.(*dijkstrav2.Display)
+			newDp := up.ObjectNew.(*dijkstrav2.Display)
+			fmt.Printf("dp updated: %s\n", newDp.Name)
+			return newDp.Spec.StartNode.ID != oldDp.Spec.StartNode.ID
+		},
+		DeleteFunc: func(de event.DeleteEvent) bool {
+			dp := de.Object.(*dijkstrav2.Display)
+			fmt.Printf("dp deleted: %s\n", dp.Name)
+			return false
+		},
+		GenericFunc: func(event.GenericEvent) bool {
+			return true
+		},
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&dijkstrav2.Display{}).
-		Watches(&dijkstrav2.Display{}, &handler.EnqueueRequestForObject{}).
-		WithEventFilter(
-			predicate.Funcs{
-				CreateFunc: func(cr event.CreateEvent) bool {
-					return true
-				},
-				DeleteFunc: func(de event.DeleteEvent) bool {
-					return false
-				},
-				UpdateFunc: func(up event.UpdateEvent) bool {
-					oldDp := up.ObjectOld.(*dijkstrav2.Display)
-					newDp := up.ObjectNew.(*dijkstrav2.Display)
-					return newDp.Spec.StartNode.ID != oldDp.Spec.StartNode.ID
-				},
-				GenericFunc: func(event.GenericEvent) bool {
-					return true
-				},
-			},
-		).
+		WithEventFilter(predicates).
 		Complete(r)
 }
 

@@ -40,7 +40,7 @@ func NewDpController(scheme *runtime.Scheme, client *dijkstraclient.Clientset, d
 		Scheme:     scheme,
 	}
 
-	dpInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	predicates := cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			dp := obj.(*dijkstrav2.Display)
 			fmt.Printf("dp added: %s\n", dp.Name)
@@ -55,12 +55,14 @@ func NewDpController(scheme *runtime.Scheme, client *dijkstraclient.Clientset, d
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
-			dc := obj.(*dijkstrav2.Display)
-			fmt.Printf("dc deleted: %s\n", dc.Name)
+			dp := obj.(*dijkstrav2.Display)
+			fmt.Printf("dp deleted: %s\n", dp.Name)
 			// 删除事件不入队列
-			// kc.enqueue(obj)
+			// dc.enqueue(obj)
 		},
-	})
+	}
+
+	dpInformer.Informer().AddEventHandler(predicates)
 
 	return dc
 }

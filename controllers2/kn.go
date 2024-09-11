@@ -38,7 +38,7 @@ func NewKnController(client *dijkstraclient.Clientset, dijkstraFactory dijkstrai
 		client:     client,
 	}
 
-	knInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	predicates := cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			kn := obj.(*dijkstrav2.KnownNodes)
 			fmt.Printf("kn added: %s\n", kn.Name)
@@ -58,7 +58,9 @@ func NewKnController(client *dijkstraclient.Clientset, dijkstraFactory dijkstrai
 			// 删除事件不入队列
 			// kc.enqueue(obj)
 		},
-	})
+	}
+
+	knInformer.Informer().AddEventHandler(predicates)
 
 	return kc
 }

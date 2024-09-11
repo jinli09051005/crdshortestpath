@@ -28,7 +28,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -50,30 +49,33 @@ type KnownNodesReconciler struct {
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *KnownNodesReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{})
+	predicates := predicate.Funcs{
+		CreateFunc: func(c event.CreateEvent) bool {
+			kn := c.Object.(*dijkstrav2.KnownNodes)
+			fmt.Printf("kn added: %s\n", kn.Name)
+			return true
+		},
+		UpdateFunc: func(up event.UpdateEvent) bool {
+			oldKn := up.ObjectOld.(*dijkstrav2.KnownNodes)
+			newKn := up.ObjectNew.(*dijkstrav2.KnownNodes)
+			fmt.Printf("kn updated: %s\n", newKn.Name)
+			// 删除重试时判断
+			if newKn.DeletionTimestamp != nil {
+				return true
+			}
+			return !NodesEqual(newKn.Spec.Nodes, oldKn.Spec.Nodes)
+		},
+		// 删除事件不入队列
+		DeleteFunc: func(de event.DeleteEvent) bool {
+			kn := de.Object.(*dijkstrav2.KnownNodes)
+			fmt.Printf("kn deleted: %s\n", kn.Name)
+			return false
+		},
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&dijkstrav2.KnownNodes{}).
-		Watches(&dijkstrav2.KnownNodes{}, &handler.EnqueueRequestForObject{}).
-		WithEventFilter(
-			predicate.Funcs{
-				CreateFunc: func(e event.CreateEvent) bool {
-					return true
-				},
-				UpdateFunc: func(up event.UpdateEvent) bool {
-					oldKn := up.ObjectOld.(*dijkstrav2.KnownNodes)
-					newKn := up.ObjectNew.(*dijkstrav2.KnownNodes)
-					// 删除重试时判断
-					if newKn.DeletionTimestamp != nil {
-						return true
-					}
-					return !NodesEqual(newKn.Spec.Nodes, oldKn.Spec.Nodes)
-				},
-				// 删除事件不入队列
-				DeleteFunc: func(de event.DeleteEvent) bool {
-					return false
-				},
-			},
-		).
+		WithEventFilter(predicates).
 		Complete(r)
 }
 
