@@ -214,15 +214,3 @@ func (dc *DpController) update(ctx context.Context, dp *dijkstrav2.Display) erro
 
 	return nil
 }
-
-func TargetNodesEqual(s1, s2 []dijkstrav2.TargetNode) bool {
-	if len(s1) != len(s2) {
-		return false
-	}
-	for i := range s1 {
-		if s1[i] != s2[i] {
-			return false
-		}
-	}
-	return true
-}
