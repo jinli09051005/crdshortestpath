@@ -2,6 +2,7 @@ package controllers2
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
@@ -116,7 +117,16 @@ func (kc *KnController) needUpdate(oldKn, newKn *dijkstrav2.KnownNodes) bool {
 	if newKn.DeletionTimestamp != nil {
 		return true
 	}
-	return !NodesEqual(newKn.Spec.Nodes, oldKn.Spec.Nodes)
+	if !NodesEqual(newKn.Spec.Nodes, oldKn.Spec.Nodes) {
+		oldNodes, err := json.Marshal(oldKn.Spec.Nodes)
+		if err != nil {
+			klog.Error(err)
+			return true
+		}
+		newKn.Annotations["oldNodes"] = string(oldNodes)
+		return true
+	}
+	return false
 }
 
 func (kc *KnController) syncHandler(key string) error {
@@ -195,8 +205,6 @@ func (kc *KnController) clean(ctx context.Context, kn *dijkstrav2.KnownNodes) er
 }
 
 func (kc *KnController) update(ctx context.Context, kn *dijkstrav2.KnownNodes) error {
-	// 更新标志
-	updateFlag := false
 	// DP状态更新标志
 	updateDPFlag := false
 	labelSelector := labels.Set(map[string]string{"nodeIdentity": kn.Labels["nodeIdentity"]}).AsSelector().String()
@@ -209,7 +217,6 @@ func (kc *KnController) update(ctx context.Context, kn *dijkstrav2.KnownNodes) e
 		}
 		knCopy := kn.DeepCopy()
 		if len(knCopy.Finalizers) == 0 && knCopy.Annotations == nil {
-			updateFlag = true
 			// 更新Finalizers标签
 			controllerutil.AddFinalizer(knCopy, "alldpstatus/computestatus")
 			// 更新Annotation nodes标签
@@ -219,23 +226,21 @@ func (kc *KnController) update(ctx context.Context, kn *dijkstrav2.KnownNodes) e
 		} else {
 			updateDPFlag = true
 			if knCopy.Annotations["nodes"] != strconv.Itoa(len(knCopy.Spec.Nodes)) {
-				updateFlag = true
 				// 更新Annotation nodes标签
 				knCopy.Annotations["nodes"] = strconv.Itoa(len(knCopy.Spec.Nodes))
 			}
 		}
 
-		if updateFlag {
-			_, err := kc.client.DijkstraV2().KnownNodeses(kn.Namespace).Update(ctx, knCopy, metav1.UpdateOptions{})
-			if err != nil {
-				if errors.IsConflict(err) {
-					continue
-				}
-				klog.Error(err)
-				return err
+		_, err = kc.client.DijkstraV2().KnownNodeses(kn.Namespace).Update(ctx, knCopy, metav1.UpdateOptions{})
+		if err != nil {
+			if errors.IsConflict(err) {
+				continue
 			}
-			break
+			klog.Error(err)
+			return err
 		}
+		break
+
 	}
 
 	if updateDPFlag {

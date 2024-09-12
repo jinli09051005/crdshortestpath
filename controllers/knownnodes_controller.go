@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
@@ -63,7 +64,16 @@ func (r *KnownNodesReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			if newKn.DeletionTimestamp != nil {
 				return true
 			}
-			return !NodesEqual(newKn.Spec.Nodes, oldKn.Spec.Nodes)
+			if !NodesEqual(newKn.Spec.Nodes, oldKn.Spec.Nodes) {
+				oldNodes, err := json.Marshal(oldKn.Spec.Nodes)
+				if err != nil {
+					klog.Error(err)
+					return true
+				}
+				newKn.Annotations["oldNodes"] = string(oldNodes)
+				return true
+			}
+			return false
 		},
 		// 删除事件不入队列
 		DeleteFunc: func(de event.DeleteEvent) bool {
@@ -169,8 +179,6 @@ func (r *KnownNodesReconciler) get(ctx context.Context, name types.NamespacedNam
 }
 
 func (r *KnownNodesReconciler) update(ctx context.Context, name types.NamespacedName, kn *dijkstrav2.KnownNodes) error {
-	// 更新标志
-	updateFlag := false
 	// DP状态更新标志
 	updateDPFlag := false
 
@@ -182,7 +190,6 @@ func (r *KnownNodesReconciler) update(ctx context.Context, name types.Namespaced
 		}
 		knCopy := kn.DeepCopy()
 		if len(knCopy.Finalizers) == 0 && knCopy.Annotations == nil {
-			updateFlag = true
 			// 更新Finalizers标签
 			controllerutil.AddFinalizer(knCopy, "alldpstatus/computestatus")
 			// 更新Annotation nodes标签
@@ -192,22 +199,19 @@ func (r *KnownNodesReconciler) update(ctx context.Context, name types.Namespaced
 		} else {
 			updateDPFlag = true
 			if knCopy.Annotations["nodes"] != strconv.Itoa(len(knCopy.Spec.Nodes)) {
-				updateFlag = true
 				// 更新Annotation nodes标签
 				knCopy.Annotations["nodes"] = strconv.Itoa(len(knCopy.Spec.Nodes))
 			}
 		}
 
-		if updateFlag {
-			if err := r.Update(ctx, knCopy); err != nil {
-				if errors.IsConflict(err) {
-					continue
-				}
-				klog.Error(err)
-				return err
+		if err := r.Update(ctx, knCopy); err != nil {
+			if errors.IsConflict(err) {
+				continue
 			}
-			break
+			klog.Error(err)
+			return err
 		}
+		break
 	}
 
 	if updateDPFlag {

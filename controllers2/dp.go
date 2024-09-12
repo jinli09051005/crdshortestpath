@@ -2,6 +2,7 @@ package controllers2
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -51,6 +52,14 @@ func NewDpController(scheme *runtime.Scheme, client *dijkstraclient.Clientset, d
 			newDp := newObj.(*dijkstrav2.Display)
 			if dc.needUpdate(oldDp, newDp) {
 				fmt.Printf("dp updated: %s\n", newDp.Name)
+				annotations := make(map[string]string)
+				oldStartNode, err := json.Marshal(oldDp.Spec.StartNode)
+				if err != nil {
+					klog.Error(err)
+					dc.enqueue(newObj)
+				}
+				annotations["oldStartNode"] = string(oldStartNode)
+				newDp.Annotations = annotations
 				dc.enqueue(newObj)
 			}
 		},
@@ -159,27 +168,27 @@ func (dc *DpController) update(ctx context.Context, dp *dijkstrav2.Display) erro
 		return err
 	}
 
-	if len(dp.OwnerReferences) == 0 {
-		for i := 0; i < 5; i++ {
-			dp, err := dc.client.DijkstraV2().Displays(dp.Namespace).Get(ctx, dp.Name, metav1.GetOptions{})
-			if err != nil {
-				klog.Error(err)
-				return err
-			}
+	for i := 0; i < 5; i++ {
+		dp, err := dc.client.DijkstraV2().Displays(dp.Namespace).Get(ctx, dp.Name, metav1.GetOptions{})
+		if err != nil {
+			klog.Error(err)
+			return err
+		}
+		if len(dp.OwnerReferences) == 0 {
 			err = controllerutil.SetOwnerReference(&knList.Items[0], dp, dc.Scheme)
 			if err != nil {
 				klog.Error(err)
 				return err
 			}
-			// 更新资源
-			_, err = dc.client.DijkstraV2().Displays(dp.Namespace).Update(ctx, dp, metav1.UpdateOptions{})
-			if err != nil {
-				if errors.IsConflict(err) {
-					continue
-				}
-				klog.Error(err)
-				return err
+		}
+		// 更新资源
+		_, err = dc.client.DijkstraV2().Displays(dp.Namespace).Update(ctx, dp, metav1.UpdateOptions{})
+		if err != nil {
+			if errors.IsConflict(err) {
+				continue
 			}
+			klog.Error(err)
+			return err
 		}
 	}
 

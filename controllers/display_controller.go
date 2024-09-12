@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -56,7 +57,18 @@ func (r *DisplayReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			oldDp := up.ObjectOld.(*dijkstrav2.Display)
 			newDp := up.ObjectNew.(*dijkstrav2.Display)
 			fmt.Printf("dp updated: %s\n", newDp.Name)
-			return newDp.Spec.StartNode.ID != oldDp.Spec.StartNode.ID
+			if newDp.Spec.StartNode.ID != oldDp.Spec.StartNode.ID {
+				annotations := make(map[string]string)
+				oldStartNode, err := json.Marshal(oldDp.Spec.StartNode)
+				if err != nil {
+					klog.Error(err)
+					return true
+				}
+				annotations["oldStartNode"] = string(oldStartNode)
+				newDp.Annotations = annotations
+				return true
+			}
+			return false
 		},
 		DeleteFunc: func(de event.DeleteEvent) bool {
 			dp := de.Object.(*dijkstrav2.Display)
@@ -130,25 +142,26 @@ func (r *DisplayReconciler) update(ctx context.Context, name types.NamespacedNam
 		return err
 	}
 
-	if len(dp.OwnerReferences) == 0 {
-		for i := 0; i < 5; i++ {
-			if err := r.get(ctx, name, dp); err != nil {
-				klog.Error(err)
-				return err
-			}
+	// 更新dp对象
+	for i := 0; i < 5; i++ {
+		if err := r.get(ctx, name, dp); err != nil {
+			klog.Error(err)
+			return err
+		}
+		if len(dp.OwnerReferences) == 0 {
 			err = controllerutil.SetOwnerReference(&knList.Items[0], dp, r.Scheme)
 			if err != nil {
 				klog.Error(err)
 				return err
 			}
-			// 更新资源
-			if err := r.Update(ctx, dp); err != nil {
-				if errors.IsConflict(err) {
-					continue
-				}
-				klog.Error(err)
-				return err
+		}
+		// 更新资源
+		if err := r.Update(ctx, dp); err != nil {
+			if errors.IsConflict(err) {
+				continue
 			}
+			klog.Error(err)
+			return err
 		}
 	}
 
