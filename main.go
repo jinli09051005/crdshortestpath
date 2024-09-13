@@ -33,7 +33,7 @@ import (
 
 	dijkstrav1 "jinli.io/crdshortestpath/api/dijkstra/v1"
 	dijkstrav2 "jinli.io/crdshortestpath/api/dijkstra/v2"
-	"jinli.io/crdshortestpath/controllers"
+	controllers "jinli.io/crdshortestpath/controllers3"
 
 	// "jinli.io/crdshortestpath/controllers2"
 	customwebhookv2 "jinli.io/crdshortestpath/pkg/webhook"
