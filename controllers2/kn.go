@@ -197,7 +197,7 @@ func (kc *KnController) syncHandler(key string) error {
 	// 这里是调谐逻辑
 	// 删除逻辑
 	if kn.DeletionTimestamp != nil {
-		klog.Info("开始执行" + ns + "/" + name + " 删除逻辑")
+		klog.Info("Begin execution of " + ns + "/" + name + " deletion logic")
 		if err := kc.clean(ctx, kn); err != nil {
 			return err
 		}
@@ -205,7 +205,7 @@ func (kc *KnController) syncHandler(key string) error {
 	}
 
 	//更新逻辑
-	klog.Info("开始执行" + ns + "/" + name + " 更新逻辑")
+	klog.Info("Begin execution of " + ns + "/" + name + " update logic")
 	if err := kc.update(ctx, kn); err != nil {
 		if errors.IsConflict(err) {
 			// 处理冲突，例如通过重新获取资源并重试更新

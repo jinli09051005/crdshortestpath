@@ -104,7 +104,7 @@ func (r *DisplayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	// 更新逻辑
-	rlog.Info("开始调谐" + req.Namespace + "/" + req.Name + " 更新事件")
+	rlog.Info("Begin execution of " + req.Namespace + "/" + req.Name + " update logic")
 	if err := r.update(ctx, req.NamespacedName, &dp); err != nil {
 		// 如果更新失败，重新入队
 		if errors.IsConflict(err) {
@@ -121,10 +121,10 @@ func (r *DisplayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 func (r *DisplayReconciler) get(ctx context.Context, name types.NamespacedName, dp *dijkstrav2.Display) error {
 	if err := r.Get(ctx, name, dp); err != nil {
 		if errors.IsNotFound(err) {
-			klog.Info("dp资源已经删除了")
+			klog.Info("The dp resource has been deleted!")
 			return err
 		}
-		klog.Error(err, "无法获取dp资源")
+		klog.Error(err, "Unable to obtain dp resource!")
 		return err
 	}
 	return nil

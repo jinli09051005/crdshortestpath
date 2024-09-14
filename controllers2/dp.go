@@ -145,7 +145,7 @@ func (dc *DpController) syncHandler(key string) error {
 
 	// 这里是调谐逻辑
 	//更新逻辑
-	klog.Info("开始执行" + ns + "/" + name + " 更新逻辑")
+	klog.Info("Begin execution of " + ns + "/" + name + " update logic")
 	if err := dc.update(ctx, dp); err != nil {
 		if errors.IsConflict(err) {
 			// 处理冲突，例如通过重新获取资源并重试更新

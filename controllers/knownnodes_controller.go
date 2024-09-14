@@ -117,7 +117,7 @@ func (r *KnownNodesReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	// 删除逻辑
 	if kn.DeletionTimestamp != nil {
-		rlog.Info("开始执行" + req.Namespace + "/" + req.Name + " 删除逻辑")
+		rlog.Info("Begin execution of " + req.Namespace + "/" + req.Name + " deletion logic")
 		if err := r.clean(ctx, &kn); err != nil {
 			// 如果删除失败，3秒后重新入队
 			return ctrl.Result{Requeue: true, RequeueAfter: 3 * time.Second}, err
@@ -126,7 +126,7 @@ func (r *KnownNodesReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	//更新逻辑
-	rlog.Info("开始执行" + req.Namespace + "/" + req.Name + " 更新逻辑")
+	rlog.Info("Begin execution of " + req.Namespace + "/" + req.Name + " update logic")
 	if err := r.update(ctx, req.NamespacedName, &kn); err != nil {
 		// 如果创建失败，重新入队
 		if errors.IsConflict(err) {
@@ -180,10 +180,10 @@ func (r *KnownNodesReconciler) get(ctx context.Context, name types.NamespacedNam
 	// 其中name为workqueue中的key，Get方法就是去cache中获取对应事件对象
 	if err := r.Get(ctx, name, kn); err != nil {
 		if errors.IsNotFound(err) {
-			klog.Info("kn资源已经删除了")
+			klog.Info("The kn resource has been deleted!")
 			return err
 		}
-		klog.Error(err, "无法获取kn资源")
+		klog.Error(err, "Unable to obtain kn resource!")
 		return err
 	}
 	return nil
