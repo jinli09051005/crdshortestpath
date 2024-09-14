@@ -11,35 +11,50 @@ import (
 	dijkstraclient "jinli.io/crdshortestpath/generated/external/clientset/versioned"
 	dijkstrainformers "jinli.io/crdshortestpath/generated/external/informers/externalversions"
 	dijkstralister "jinli.io/crdshortestpath/generated/external/listers/dijkstra/v2"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 type KnController struct {
-	knLister   dijkstralister.KnownNodesLister
-	knInformer cache.SharedIndexInformer
-	queue      workqueue.RateLimitingInterface
-	client     *dijkstraclient.Clientset
+	knLister    dijkstralister.KnownNodesLister
+	knInformer  cache.SharedIndexInformer
+	podInformer cache.SharedIndexInformer
+	queue       workqueue.RateLimitingInterface
+	client      *dijkstraclient.Clientset
+	k8sClient   *kubernetes.Clientset
+	scheme      *runtime.Scheme
+	schema.GroupVersionKind
 }
 
-func NewKnController(client *dijkstraclient.Clientset, dijkstraFactory dijkstrainformers.SharedInformerFactory) *KnController {
+func NewKnController(scheme *runtime.Scheme, k8sclient *kubernetes.Clientset, client *dijkstraclient.Clientset, k8sFactory informers.SharedInformerFactory, dijkstraFactory dijkstrainformers.SharedInformerFactory) *KnController {
 	knInformer := dijkstraFactory.Dijkstra().V2().KnownNodeses()
+	podInformer := k8sFactory.Core().V1().Pods()
 
 	kc := &KnController{
-		knLister:   knInformer.Lister(),
-		knInformer: knInformer.Informer(),
-		queue:      workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
-		client:     client,
+		knLister:         knInformer.Lister(),
+		knInformer:       knInformer.Informer(),
+		podInformer:      podInformer.Informer(),
+		queue:            workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		client:           client,
+		k8sClient:        k8sclient,
+		scheme:           scheme,
+		GroupVersionKind: dijkstrav2.SchemeGroupVersion.WithKind("KnownNodes"),
 	}
 
-	predicates := cache.ResourceEventHandlerFuncs{
+	knPredicates := cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			kn := obj.(*dijkstrav2.KnownNodes)
 			fmt.Printf("kn added: %s\n", kn.Name)
@@ -61,7 +76,42 @@ func NewKnController(client *dijkstraclient.Clientset, dijkstraFactory dijkstrai
 		},
 	}
 
-	knInformer.Informer().AddEventHandler(predicates)
+	podPredicates := cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			pod := obj.(*corev1.Pod)
+			fmt.Printf("pod added: %s\n", pod.Name)
+			// 获取kn
+			if controllerRef := metav1.GetControllerOf(pod); controllerRef != nil {
+				kn := kc.resolveControllerRef(pod.Namespace, controllerRef)
+				if kn != nil {
+					kc.enqueue(kn)
+				}
+			}
+		},
+		UpdateFunc: func(oldObj, newObj interface{}) {
+			newPod := newObj.(*corev1.Pod)
+			fmt.Printf("pod updated: %s\n", newPod.Name)
+			if controllerRef := metav1.GetControllerOf(newPod); controllerRef != nil {
+				kn := kc.resolveControllerRef(newPod.Namespace, controllerRef)
+				if kn != nil {
+					kc.enqueue(kn)
+				}
+			}
+		},
+		DeleteFunc: func(obj interface{}) {
+			pod := obj.(*corev1.Pod)
+			fmt.Printf("pod deleted: %s\n", pod.Name)
+			if controllerRef := metav1.GetControllerOf(pod); controllerRef != nil {
+				kn := kc.resolveControllerRef(pod.Namespace, controllerRef)
+				if kn != nil {
+					kc.enqueue(kn)
+				}
+			}
+		},
+	}
+
+	knInformer.Informer().AddEventHandler(knPredicates)
+	podInformer.Informer().AddEventHandler(podPredicates)
 
 	return kc
 }
@@ -210,7 +260,7 @@ func (kc *KnController) update(ctx context.Context, kn *dijkstrav2.KnownNodes) e
 	labelSelector := labels.Set(map[string]string{"nodeIdentity": kn.Labels["nodeIdentity"]}).AsSelector().String()
 	// 更新资源
 	for i := 0; i < 5; i++ {
-		kn, err := kc.client.DijkstraV2().KnownNodeses(kn.Namespace).Get(ctx, kn.Name, metav1.GetOptions{})
+		kn, err := kc.knLister.KnownNodeses(kn.Namespace).Get(kn.Name)
 		if err != nil {
 			klog.Error(err)
 			return err
@@ -223,6 +273,11 @@ func (kc *KnController) update(ctx context.Context, kn *dijkstrav2.KnownNodes) e
 			annotations := make(map[string]string)
 			annotations["nodes"] = strconv.Itoa(len(knCopy.Spec.Nodes))
 			knCopy.Annotations = annotations
+			err := kc.addPods(ctx, knCopy)
+			if err != nil {
+				klog.Error(err)
+				return err
+			}
 		} else {
 			updateDPFlag = true
 			if knCopy.Annotations["nodes"] != strconv.Itoa(len(knCopy.Spec.Nodes)) {
@@ -231,7 +286,7 @@ func (kc *KnController) update(ctx context.Context, kn *dijkstrav2.KnownNodes) e
 			}
 		}
 
-		_, err = kc.client.DijkstraV2().KnownNodeses(kn.Namespace).Update(ctx, knCopy, metav1.UpdateOptions{})
+		_, err = kc.client.DijkstraV2().KnownNodeses(knCopy.Namespace).Update(ctx, knCopy, metav1.UpdateOptions{})
 		if err != nil {
 			if errors.IsConflict(err) {
 				continue
@@ -246,13 +301,15 @@ func (kc *KnController) update(ctx context.Context, kn *dijkstrav2.KnownNodes) e
 	if updateDPFlag {
 		// 更新KN状态
 		for i := 0; i < 5; i++ {
-			kn, err := kc.client.DijkstraV2().KnownNodeses(kn.Namespace).Get(ctx, kn.Name, metav1.GetOptions{})
+			oldKn, err := kc.knLister.KnownNodeses(kn.Namespace).Get(kn.Name)
 			if err != nil {
 				klog.Error(err)
 				return err
 			}
-			kn.Status.LastUpdate = metav1.NewTime(time.Now())
-			_, err = kc.client.DijkstraV2().KnownNodeses(kn.Namespace).UpdateStatus(ctx, kn, metav1.UpdateOptions{})
+
+			newKn := oldKn.DeepCopy()
+			newKn.Status.LastUpdate = metav1.NewTime(time.Now())
+			_, err = kc.client.DijkstraV2().KnownNodeses(newKn.Namespace).UpdateStatus(ctx, newKn, metav1.UpdateOptions{})
 			if err != nil {
 				if errors.IsConflict(err) {
 					continue
@@ -275,6 +332,39 @@ func (kc *KnController) update(ctx context.Context, kn *dijkstrav2.KnownNodes) e
 		err = kc.handleDependencies(ctx, kn, dpList)
 		if err != nil {
 			return err
+		}
+	}
+
+	if updateDPFlag {
+		// 更新pod
+		//获取Nodes变化的节点
+		var oldNodes []dijkstrav2.Node
+		if oldNodesString, ok := kn.Annotations["oldNodes"]; ok {
+			err := json.Unmarshal([]byte(oldNodesString), &oldNodes)
+			if err != nil {
+				klog.Info(err)
+				return err
+			}
+			delNodes := DifferenceNodes(oldNodes, kn.Spec.Nodes)
+			addNodes := DifferenceNodes(kn.Spec.Nodes, oldNodes)
+
+			for i := range delNodes {
+				name := fmt.Sprintf("%s-%d", kn.Name, delNodes[i].ID)
+				err := kc.delPod(ctx, name, kn.Namespace)
+				if err != nil {
+					klog.Info(err)
+					return err
+				}
+			}
+
+			for i := range addNodes {
+				name := fmt.Sprintf("%s-%d", kn.Name, addNodes[i].ID)
+				err := kc.addPod(ctx, name, kn)
+				if err != nil {
+					klog.Info(err)
+					return err
+				}
+			}
 		}
 	}
 	return nil
@@ -347,5 +437,85 @@ func (kc *KnController) handleDependencies(ctx context.Context, kn *dijkstrav2.K
 		}
 	}
 
+	return nil
+}
+
+func (kc *KnController) resolveControllerRef(namespace string, controllerRef *metav1.OwnerReference) *dijkstrav2.KnownNodes {
+	// We can't look up by UID, so look up by Name and then verify UID.
+	// Don't even try to look up by Name if it's the wrong Kind.
+	if controllerRef.Kind != kc.Kind {
+		return nil
+	}
+	kn, err := kc.knLister.KnownNodeses(namespace).Get(controllerRef.Name)
+	if err != nil {
+		return nil
+	}
+	if kn.UID != controllerRef.UID {
+		// The controller we found with this Name is not the same one that the
+		// ControllerRef points to.
+		return nil
+	}
+	return kn
+}
+
+func (kc *KnController) addPods(ctx context.Context, kn *dijkstrav2.KnownNodes) error {
+	for i := range kn.Spec.Nodes {
+		name := fmt.Sprintf("%s-%d", kn.Name, kn.Spec.Nodes[i].ID)
+		err := kc.addPod(ctx, name, kn)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (kc *KnController) addPod(ctx context.Context, name string, kn *dijkstrav2.KnownNodes) error {
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: kn.Namespace,
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name:  "busybox",
+					Image: "registry.cn-hangzhou.aliyuncs.com/jinli09051005/tools:busybox-latest",
+					Command: []string{
+						"tail",
+						"-f",
+						"/dev/null",
+					},
+				},
+			},
+		},
+	}
+
+	if err := ctrl.SetControllerReference(kn, pod, kc.scheme); err != nil {
+		klog.Info(err)
+		return err
+	}
+
+	_, err := kc.k8sClient.CoreV1().Pods(kn.Namespace).Create(ctx, pod, metav1.CreateOptions{})
+	if err != nil {
+		if errors.IsAlreadyExists(err) {
+			fmt.Printf("Pod  %s already exist in namespace %s\n", name, kn.Namespace)
+			return nil
+		}
+		klog.Info(err)
+		return err
+	}
+	return nil
+}
+
+func (kc *KnController) delPod(ctx context.Context, name, ns string) error {
+	err := kc.k8sClient.CoreV1().Pods(ns).Delete(ctx, name, metav1.DeleteOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			fmt.Printf("Pod  %s does not exist in namespace %s\n", name, ns)
+			return nil
+		}
+		klog.Info(err)
+		return err
+	}
 	return nil
 }

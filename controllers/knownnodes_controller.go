@@ -23,6 +23,8 @@ import (
 	"strconv"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -52,39 +54,48 @@ type KnownNodesReconciler struct {
 func (r *KnownNodesReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	predicates := predicate.Funcs{
 		CreateFunc: func(c event.CreateEvent) bool {
-			kn := c.Object.(*dijkstrav2.KnownNodes)
-			fmt.Printf("kn added: %s\n", kn.Name)
+			kn, ok := c.Object.(*dijkstrav2.KnownNodes)
+			if ok {
+				fmt.Printf("kn added: %s\n", kn.Name)
+			}
 			return true
 		},
 		UpdateFunc: func(up event.UpdateEvent) bool {
-			oldKn := up.ObjectOld.(*dijkstrav2.KnownNodes)
-			newKn := up.ObjectNew.(*dijkstrav2.KnownNodes)
-			fmt.Printf("kn updated: %s\n", newKn.Name)
-			// 删除重试时判断
-			if newKn.DeletionTimestamp != nil {
-				return true
-			}
-			if !NodesEqual(newKn.Spec.Nodes, oldKn.Spec.Nodes) {
-				oldNodes, err := json.Marshal(oldKn.Spec.Nodes)
-				if err != nil {
-					klog.Error(err)
+			oldKn, oldOk := up.ObjectOld.(*dijkstrav2.KnownNodes)
+			newKn, newOk := up.ObjectNew.(*dijkstrav2.KnownNodes)
+			if oldOk && newOk {
+				fmt.Printf("kn updated: %s\n", newKn.Name)
+				// 删除重试时判断
+				if newKn.DeletionTimestamp != nil {
 					return true
 				}
-				newKn.Annotations["oldNodes"] = string(oldNodes)
-				return true
+				if !NodesEqual(newKn.Spec.Nodes, oldKn.Spec.Nodes) {
+					oldNodes, err := json.Marshal(oldKn.Spec.Nodes)
+					if err != nil {
+						klog.Error(err)
+						return true
+					}
+					newKn.Annotations["oldNodes"] = string(oldNodes)
+					return true
+				}
+				return false
 			}
-			return false
+			return true
 		},
 		// 删除事件不入队列
 		DeleteFunc: func(de event.DeleteEvent) bool {
-			kn := de.Object.(*dijkstrav2.KnownNodes)
-			fmt.Printf("kn deleted: %s\n", kn.Name)
-			return false
+			kn, ok := de.Object.(*dijkstrav2.KnownNodes)
+			if ok {
+				fmt.Printf("kn deleted: %s\n", kn.Name)
+				return false
+			}
+			return true
 		},
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&dijkstrav2.KnownNodes{}).
+		Owns(&corev1.Pod{}).
 		WithEventFilter(predicates).
 		Complete(r)
 }
@@ -196,6 +207,11 @@ func (r *KnownNodesReconciler) update(ctx context.Context, name types.Namespaced
 			annotations := make(map[string]string)
 			annotations["nodes"] = strconv.Itoa(len(knCopy.Spec.Nodes))
 			knCopy.Annotations = annotations
+			err := r.addPods(ctx, knCopy)
+			if err != nil {
+				klog.Error(err)
+				return err
+			}
 		} else {
 			updateDPFlag = true
 			if knCopy.Annotations["nodes"] != strconv.Itoa(len(knCopy.Spec.Nodes)) {
@@ -247,6 +263,39 @@ func (r *KnownNodesReconciler) update(ctx context.Context, name types.Namespaced
 		err = r.handleDependencies(ctx, kn, &dpList)
 		if err != nil {
 			return err
+		}
+	}
+
+	if updateDPFlag {
+		// 更新pod
+		//获取Nodes变化的节点
+		var oldNodes []dijkstrav2.Node
+		if oldNodesString, ok := kn.Annotations["oldNodes"]; ok {
+			err := json.Unmarshal([]byte(oldNodesString), &oldNodes)
+			if err != nil {
+				klog.Info(err)
+				return err
+			}
+			delNodes := DifferenceNodes(oldNodes, kn.Spec.Nodes)
+			addNodes := DifferenceNodes(kn.Spec.Nodes, oldNodes)
+
+			for i := range delNodes {
+				name := fmt.Sprintf("%s-%d", kn.Name, delNodes[i].ID)
+				err := r.delPod(ctx, name, kn.Namespace)
+				if err != nil {
+					klog.Info(err)
+					return err
+				}
+			}
+
+			for i := range addNodes {
+				name := fmt.Sprintf("%s-%d", kn.Name, addNodes[i].ID)
+				err := r.addPod(ctx, name, kn)
+				if err != nil {
+					klog.Info(err)
+					return err
+				}
+			}
 		}
 	}
 	return nil
@@ -327,5 +376,73 @@ func (r *KnownNodesReconciler) handleDependencies(ctx context.Context, kn *dijks
 		}
 	}
 
+	return nil
+}
+
+func (r *KnownNodesReconciler) addPods(ctx context.Context, kn *dijkstrav2.KnownNodes) error {
+	for i := range kn.Spec.Nodes {
+		name := fmt.Sprintf("%s-%d", kn.Name, kn.Spec.Nodes[i].ID)
+		err := r.addPod(ctx, name, kn)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *KnownNodesReconciler) addPod(ctx context.Context, name string, kn *dijkstrav2.KnownNodes) error {
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: kn.Namespace,
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name:  "busybox",
+					Image: "registry.cn-hangzhou.aliyuncs.com/jinli09051005/tools:busybox-latest",
+					Command: []string{
+						"tail",
+						"-f",
+						"/dev/null",
+					},
+				},
+			},
+		},
+	}
+
+	if err := ctrl.SetControllerReference(kn, pod, r.Scheme); err != nil {
+		klog.Info(err)
+		return err
+	}
+
+	err := r.Create(ctx, pod)
+	if err != nil {
+		if errors.IsAlreadyExists(err) {
+			fmt.Printf("Pod  %s already exist in namespace %s\n", name, kn.Namespace)
+			return nil
+		}
+		klog.Info(err)
+		return err
+	}
+	return nil
+}
+
+func (r *KnownNodesReconciler) delPod(ctx context.Context, name, ns string) error {
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+		},
+	}
+	err := r.Delete(ctx, pod)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			fmt.Printf("Pod  %s does not exist in namespace %s\n", name, ns)
+			return nil
+		}
+		klog.Info(err)
+		return err
+	}
 	return nil
 }

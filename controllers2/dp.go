@@ -169,11 +169,12 @@ func (dc *DpController) update(ctx context.Context, dp *dijkstrav2.Display) erro
 	}
 
 	for i := 0; i < 5; i++ {
-		dp, err := dc.client.DijkstraV2().Displays(dp.Namespace).Get(ctx, dp.Name, metav1.GetOptions{})
+		dp, err := dc.dpLister.Displays(dp.Namespace).Get(dp.Name)
 		if err != nil {
 			klog.Error(err)
 			return err
 		}
+
 		if len(dp.OwnerReferences) == 0 {
 			err = controllerutil.SetOwnerReference(&knList.Items[0], dp, dc.Scheme)
 			if err != nil {
@@ -202,7 +203,7 @@ func (dc *DpController) update(ctx context.Context, dp *dijkstrav2.Display) erro
 	if !TargetNodesEqual(newTargetNode, oldTargetNode) {
 		// 更新子资源列表
 		for i := 0; i < 5; i++ {
-			oldDp, err := dc.client.DijkstraV2().Displays(dp.Namespace).Get(ctx, dp.Name, metav1.GetOptions{})
+			oldDp, err := dc.dpLister.Displays(dp.Namespace).Get(dp.Name)
 			if err != nil {
 				klog.Error(err)
 				return err

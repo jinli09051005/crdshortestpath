@@ -193,3 +193,21 @@ type TargetNodesByID []dijkstrav2.TargetNode
 func (a TargetNodesByID) Len() int           { return len(a) }
 func (a TargetNodesByID) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a TargetNodesByID) Less(i, j int) bool { return a[i].ID < a[j].ID }
+
+// 在s1中不在s2中
+func DifferenceNodes(s1, s2 []dijkstrav2.Node) []dijkstrav2.Node {
+	m := make(map[int]bool)
+	diff := []dijkstrav2.Node{}
+
+	for _, item := range s2 {
+		m[int(item.ID)] = true
+	}
+
+	for _, item := range s1 {
+		if _, found := m[int(item.ID)]; !found {
+			diff = append(diff, item)
+		}
+	}
+
+	return diff
+}
