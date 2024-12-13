@@ -102,11 +102,7 @@ func (w *CustomDpWebhook) ValidateCreate(ctx context.Context, obj runtime.Object
 	}
 
 	// 创建dp对象时校验总数有没有超过对应kn的nodes数量
-	ds, _ := dijkstraClient.Displays(dp.Namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: labelSelector,
-	})
-
-	if len(ds.Items)+1 > len(kns.Items[0].Spec.Nodes) {
+	if len(dps.Items)+1 > len(kns.Items[0].Spec.Nodes) {
 		fielderr = field.Invalid(field.NewPath("spec", "nodeIdentity"), dp.Spec.NodeIdentity, "the number of dps is greater than kn nodes for "+dp.Namespace+"/"+dp.Spec.NodeIdentity)
 		errList = append(errList, fielderr)
 		return warnning, errList.ToAggregate()
