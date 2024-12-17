@@ -109,9 +109,8 @@ func NewKnController(scheme *runtime.Scheme, k8sclient *kubernetes.Clientset, cl
 			}
 		},
 	}
-
-	knInformer.Informer().AddEventHandler(knPredicates)
-	podInformer.Informer().AddEventHandler(podPredicates)
+	kc.knInformer.AddEventHandler(knPredicates)
+	kc.podInformer.AddEventHandler(podPredicates)
 
 	return kc
 }

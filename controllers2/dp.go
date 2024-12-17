@@ -71,7 +71,7 @@ func NewDpController(scheme *runtime.Scheme, client *dijkstraclient.Clientset, d
 		},
 	}
 
-	dpInformer.Informer().AddEventHandler(predicates)
+	dc.dpInformer.AddEventHandler(predicates)
 
 	return dc
 }
